@@ -48,7 +48,7 @@ Since this repository is now a native Kotlin Android project, you **must** updat
 {
   "name": "mobile-kotlin",
   "dir": ".",
-  "mobile_stack": "android",
+  "mobile_stack": "kotlin",
   "enable_android_build": true,
   "enable_ios_build": false,
   "version_stream": "mobile-kotlin"
