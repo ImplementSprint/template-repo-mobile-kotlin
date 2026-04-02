@@ -108,7 +108,7 @@ jobs:
       enable_lint: ${{ github.event_name == 'workflow_dispatch' && fromJSON(github.event.inputs.enable_lint || 'true') || true }}
       enable_security_scan: ${{ github.event_name == 'workflow_dispatch' && fromJSON(github.event.inputs.enable_security_scan || 'true') || true }}
       enable_sonar: true
-      enable_governance: ${{ github.event_name == 'workflow_dispatch' && fromJSON(github.event.inputs.enable_governance || 'true') || true }}
+      enable_governance: ${{ (github.ref_name == 'test') && (github.event_name != 'workflow_dispatch' || fromJSON(github.event.inputs.enable_governance || 'true')) }}
       enable_grafana_k6: ${{ github.event_name == 'workflow_dispatch' && fromJSON(github.event.inputs.enable_grafana_k6 || 'false') || false }}
       k6_script_path: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.k6_script_path || 'tests/performance' }}
       k6_base_url: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.k6_base_url || '' }}

@@ -1,0 +1,53 @@
+name: Kotlin Mobile Verify
+
+on:
+  pull_request:
+    branches: [test]
+  push:
+    branches: [test]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
+
+      - name: Export Android SDK variables
+        shell: bash
+        run: |
+          if [ -n "${ANDROID_HOME}" ]; then
+            echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+            echo "ANDROID_SDK_ROOT=${ANDROID_HOME}" >> "$GITHUB_ENV"
+          elif [ -n "${ANDROID_SDK_ROOT}" ]; then
+            echo "ANDROID_HOME=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+            echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+          else
+            echo "ANDROID_HOME and ANDROID_SDK_ROOT are not set" >&2
+            exit 1
+          fi
+
+      - name: Run verification gates
+        run: ./gradlew check --no-daemon --warning-mode all
