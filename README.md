@@ -90,6 +90,10 @@ jobs:
         run: ./gradlew check --no-daemon
 ```
 
+Optional hardening for dependency audit in CI:
+
+- Add repository secret `NVD_API_KEY` (from NVD) so OWASP dependency-check can use higher API limits and more stable feed updates.
+
 ## CI/CD Pipeline
 
 The template uses a workflow caller at `.github/workflows/mobile-pipeline-caller.yml` that delegates execution to the central orchestrator workflow (`master-pipeline-mobile.yml` in `central-workflow`).

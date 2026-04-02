@@ -15,6 +15,16 @@ licenseReport {
     allowedLicensesFile = layout.projectDirectory.file("config/allowed-licenses.json").asFile
 }
 
+dependencyCheck {
+    // Do not fail governance on upstream NVD feed/update tool crashes.
+    // The report still gets generated when data is available.
+    failOnError = false
+
+    nvd {
+        apiKey = System.getenv("NVD_API_KEY")
+    }
+}
+
 tasks.register("unitTest") {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     description = "Runs Kotlin unit tests."
