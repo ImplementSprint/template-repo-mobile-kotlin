@@ -25,6 +25,25 @@ dependencyCheck {
     }
 }
 
+tasks.named("dependencyCheckAnalyze") {
+    onlyIf {
+        val isCi = System.getenv("CI")?.equals("true", ignoreCase = true) == true
+        val hasNvdApiKey = !System.getenv("NVD_API_KEY").isNullOrBlank()
+
+        if (isCi && !hasNvdApiKey) {
+            logger.lifecycle("Skipping dependencyCheckAnalyze in CI because NVD_API_KEY is not set.")
+            false
+        } else {
+            true
+        }
+    }
+}
+
+tasks.named("checkLicense") {
+    // Avoid Gradle task validation failure in CI by declaring explicit ordering.
+    dependsOn("dependencyCheckAnalyze")
+}
+
 tasks.register("unitTest") {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     description = "Runs Kotlin unit tests."

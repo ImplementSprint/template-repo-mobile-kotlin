@@ -54,7 +54,8 @@ This keeps the template portable while allowing `unitTest`, `lintAndStyleCheck`,
 
 ### GitHub Actions Example
 
-This template already includes a ready workflow at `.github/workflows/ci-verify.yml`.
+This template includes a manual verification workflow at `.github/workflows/ci-verify.yml`.
+Automatic branch CI is handled by `.github/workflows/mobile-pipeline-caller.yml`.
 
 Use this pattern in consuming repositories to make SDK discovery explicit in CI:
 
@@ -62,9 +63,7 @@ Use this pattern in consuming repositories to make SDK discovery explicit in CI:
 name: Kotlin Mobile Verify
 
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   verify:
@@ -93,6 +92,7 @@ jobs:
 Optional hardening for dependency audit in CI:
 
 - Add repository secret `NVD_API_KEY` (from NVD) so OWASP dependency-check can use higher API limits and more stable feed updates.
+- If `NVD_API_KEY` is not provided in CI, dependency audit is skipped to avoid upstream NVD feed failures blocking the pipeline.
 
 ## CI/CD Pipeline
 
@@ -117,3 +117,5 @@ Since this repository is now a native Kotlin Android project, you **must** updat
 ```
 
 This configuration ensures the central workflow detects the project type as Kotlin/Android and executes release packaging tasks so branch main can publish production-ready Android artifacts.
+
+Deploy/release publishing is configured to run on push to `main` by default.
