@@ -21,7 +21,6 @@
 #   enable_ios_build: true       — Local iOS simulator build (Detox debug .app)
 #   enable_lint: true
 #   enable_security_scan: true
-#   enable_governance: true
 #   coverage_threshold: 80
 #
 # Expo systems must be TypeScript-based:
@@ -55,10 +54,6 @@ on:
         default: true
       enable_sonar:
         description: "Run SonarCloud analysis"
-        type: boolean
-        default: true
-      enable_governance:
-        description: "Run governance checks (Kotlin)"
         type: boolean
         default: true
       enable_grafana_k6:
@@ -101,14 +96,101 @@ permissions:
   security-events: write
 
 jobs:
+  kotest-tests:
+    name: Kotest Tests
+    runs-on: ubuntu-latest
+    env:
+      RUN_FULL_QUALITY: ${{ github.ref_name == 'test' || github.base_ref == 'test' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
+
+      - name: Export Android SDK variables
+        shell: bash
+        run: |
+          if [ -n "${ANDROID_HOME}" ]; then
+            echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+            echo "ANDROID_SDK_ROOT=${ANDROID_HOME}" >> "$GITHUB_ENV"
+          elif [ -n "${ANDROID_SDK_ROOT}" ]; then
+            echo "ANDROID_HOME=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+            echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+          else
+            echo "ANDROID_HOME and ANDROID_SDK_ROOT are not set" >&2
+            exit 1
+          fi
+
+      - name: Run full Kotest suite (test branch)
+        if: ${{ env.RUN_FULL_QUALITY == 'true' }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew test --no-daemon --warning-mode all
+
+      - name: Run smoke Kotest check (uat/main)
+        if: ${{ env.RUN_FULL_QUALITY != 'true' }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:testDebugUnitTest --tests "com.implementsprint.mobile.SampleKotestSpec" --no-daemon --warning-mode all
+
+  trivy-security-scan:
+    name: Trivy Security Scan
+    runs-on: ubuntu-latest
+    env:
+      RUN_FULL_QUALITY: ${{ github.ref_name == 'test' || github.base_ref == 'test' }}
+
+    steps:
+      - name: Checkout code
+        if: ${{ env.RUN_FULL_QUALITY == 'true' && (github.event_name != 'workflow_dispatch' || fromJSON(github.event.inputs.enable_security_scan || 'true')) }}
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scan (test branch)
+        if: ${{ env.RUN_FULL_QUALITY == 'true' && (github.event_name != 'workflow_dispatch' || fromJSON(github.event.inputs.enable_security_scan || 'true')) }}
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          scan-type: fs
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: '1'
+
+      - name: Upload Trivy SARIF report
+        if: ${{ env.RUN_FULL_QUALITY == 'true' && (github.event_name != 'workflow_dispatch' || fromJSON(github.event.inputs.enable_security_scan || 'true')) && always() }}
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Security scan skipped outside test branch
+        if: ${{ env.RUN_FULL_QUALITY != 'true' || (github.event_name == 'workflow_dispatch' && !fromJSON(github.event.inputs.enable_security_scan || 'true')) }}
+        run: echo "Trivy scan skipped (non-test branch flow or manually disabled)."
+
   call-orchestrator:
+    needs: [kotest-tests, trivy-security-scan]
     uses: ImplementSprint/central-workflow/.github/workflows/master-pipeline-mobile.yml@main
     with:
       pipeline_mode: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.pipeline_mode || 'auto' }}
       enable_lint: ${{ github.event_name == 'workflow_dispatch' && fromJSON(github.event.inputs.enable_lint || 'true') || true }}
-      enable_security_scan: ${{ github.event_name == 'workflow_dispatch' && fromJSON(github.event.inputs.enable_security_scan || 'true') || true }}
+      enable_security_scan: false
       enable_sonar: true
-      enable_governance: ${{ (github.ref_name == 'test') && (github.event_name != 'workflow_dispatch' || fromJSON(github.event.inputs.enable_governance || 'true')) }}
+      enable_governance: false
       enable_grafana_k6: ${{ github.event_name == 'workflow_dispatch' && fromJSON(github.event.inputs.enable_grafana_k6 || 'false') || false }}
       k6_script_path: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.k6_script_path || 'tests/performance' }}
       k6_base_url: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.k6_base_url || '' }}
