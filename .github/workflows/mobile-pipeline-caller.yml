@@ -183,6 +183,7 @@ jobs:
         run: echo "Trivy scan skipped (non-test branch flow or manually disabled)."
 
   call-orchestrator:
+    if: ${{ github.ref_name != 'test' && github.base_ref != 'test' }}
     needs: [kotest-tests, trivy-security-scan]
     uses: ImplementSprint/central-workflow/.github/workflows/master-pipeline-mobile.yml@main
     with:
