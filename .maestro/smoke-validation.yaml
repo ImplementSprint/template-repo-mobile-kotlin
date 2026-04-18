@@ -1,0 +1,38 @@
+appId: com.implementsprint.mobile
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: "Validate Readiness"
+    timeout: 15000
+- tapOn:
+    id: "com.implementsprint.mobile:id/environmentInput"
+- eraseText
+- inputText: "main"
+- tapOn:
+    id: "com.implementsprint.mobile:id/apiBaseUrlInput"
+- eraseText
+- inputText: "http://localhost/mock"
+- tapOn:
+    id: "com.implementsprint.mobile:id/validateButton"
+- extendedWaitUntil:
+    visible:
+      text: "Not ready (3): Production-like environments require HTTPS; Production-like environments cannot use localhost endpoints; Production-like environments cannot use mock endpoints"
+    timeout: 15000
+- assertVisible: "Not ready (3): Production-like environments require HTTPS; Production-like environments cannot use localhost endpoints; Production-like environments cannot use mock endpoints"
+- tapOn:
+    id: "com.implementsprint.mobile:id/environmentInput"
+- eraseText
+- inputText: "uat"
+- tapOn:
+    id: "com.implementsprint.mobile:id/apiBaseUrlInput"
+- eraseText
+- inputText: "https://api.example.com"
+- tapOn:
+    id: "com.implementsprint.mobile:id/validateButton"
+- extendedWaitUntil:
+    visible:
+      text: "Ready for deployment"
+    timeout: 15000
+- assertVisible: "Ready for deployment"
